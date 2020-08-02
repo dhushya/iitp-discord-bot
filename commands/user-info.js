@@ -1,14 +1,30 @@
 const {
-    getAuthToken,
-    getSpreadSheetValues
-  } = require('../services/googleSheetsService.js');
+	getAuthToken,
+	getSpreadSheetValues
+} = require('../services/googleSheetsService.js');
 
-const spreadsheetId = "<put spreadsheet id here>";
-const sheetName = "<put sheet name here>";
+// Id of the spreadsheet file (it is in the url of the google sheet)
+const spreadsheetId = "1tLG5wq2MRHDmBVe1FJyTTVO8ABUWy67emr-45--dzbk";
+const sheetName = "allStudents";
 
-async function getDetails(message){
+
+function convertCaseName(realname){
+	let name = realname.split(' ');
+	let newName = [];
+
+	function convert(item){
+	  item = item.charAt(0).toUpperCase() + item.slice(1).toLowerCase();
+	  newName.push(item);
+	}
+
+	name.forEach(convert);
+	return newName.join(' ')
+}
+
+
+async function getDetails(message) {
 	var author_detail = null;
-	try{
+	try {
 		const auth = await getAuthToken();
 		const details = await getSpreadSheetValues({
 			spreadsheetId,
@@ -20,23 +36,50 @@ async function getDetails(message){
 	catch (error) {
 		console.log(error);
 	};
-	for(var i in author_detail){
-		if (author_detail[i][0] == message.author.username){
-			message.channel.send(`Your Name is ${author_detail[i][1]}`);
-			message.channel.send(`Your Roll No is ${author_detail[i][2]}`);
+	console.log(`Finding match for ${message.author.tag}`);
+	for (var i in author_detail) {
+		
+		let discordUserNameTag = author_detail[i][0];
+		if (discordUserNameTag == message.author.tag) {
+			let realName = author_detail[i][1];
+			realName = convertCaseName(realName);
+			let rollNumber = author_detail[i][2];
+			var house = author_detail[i][4];
+
+			if (house[0] === 'A') {
+				house = 'Auriga';
+			} else if (house[0] === 'C') {
+				house = 'Cassiopeia';
+			} else if (house[0] === 'P') {
+				house = 'Pegasus';
+			} else if (house[0] === 'D') {
+				house = 'Darco';
+			}
+
+			message.channel.send(`Your Name is ${realName}\nYour Roll No is ${rollNumber}\nYour house is ${house}`);
+			// TODO Do not print the roll number
+			// TODO Assign a role based on the roll number like give `role-a` if rollNumber starts with 1901
 			return;
 		}
 	};
-	message.channel.send("no rollno found in database");
+	message.reply("Sorry we couldn't find you in our database. \
+	Please ping @moderator to identify you.");
 	return;
 }
 
 module.exports = {
 	name: 'user-info',
 	description: 'Display info about yourself.',
-	execute(message) {
-		message.channel.send(`Your username: ${message.author.username}:${message.author.tag}\n
-		Your ID: ${message.author.id}`);
+	execute(message, args) {
+		console.log(`${message}\n${args.toString()}`);
+		let userName = message.author.tag;
+		// TODO Check for mentions in this command
+		// If someone runs !user-info @dhushyanth in the message 
+		// then identify the mentioned user and fetch the 
+		// roll number of that user
+		message.channel.send(`Your username: ${userName}\n`);
 		getDetails(message);
+		// var role = message.guild.roles.find(role => role.name === "role-b");
+		// message.member.addRole(role);
 	},
 };
